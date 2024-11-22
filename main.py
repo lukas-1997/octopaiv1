@@ -30,6 +30,8 @@ def init_session_state():
         st.session_state.api_key = os.getenv("API_KEY", "")
     if 'backend_url' not in st.session_state:
         st.session_state.backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+    if 'meeting_url' not in st.session_state:
+        st.session_state.meeting_url = ""
     if 'last_refresh' not in st.session_state:
         st.session_state.last_refresh = time.time()
     if 'processed_messages' not in st.session_state:
@@ -70,6 +72,8 @@ def main():
                     bot_id = create_bot(api_key, meeting_url)
                     if bot_id:
                         st.session_state.bot_id = bot_id
+                        # Store meeting URL in session state
+                        st.session_state.meeting_url = meeting_url
 
                         # Fetch initial transcript data
                         transcripts = fetch_transcripts(api_key, bot_id)
@@ -136,6 +140,20 @@ def main():
                     if transcripts:
                         st.session_state.transcripts = transcripts
                         st.session_state.last_refresh = time.time()
+                        # Send updated transcripts to backend
+                        try:
+                            success, message = send_to_backend(
+                                st.session_state.backend_url,
+                                meeting_url,
+                                st.session_state.host_name,
+                                transcripts
+                            )
+                            if success:
+                                st.success("Backend updated successfully!")
+                            else:
+                                st.error(f"Failed to send to backend: {message}")
+                        except Exception as e:
+                            st.error(f"Failed to send to backend: {str(e)}")
 
             with col_b:
                 if st.button("🔄 Refresh Chat"):
